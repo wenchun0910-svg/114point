@@ -22,7 +22,7 @@
     </div>
     <div class="card-body">
       <div class="input-group mb-3">
-        <input type="text" id="stuId" class="form-control" placeholder="請輸入學號 (例如: 101)">
+        <input type="text" id="stuId" class="form-control" placeholder="請輸入帳號 (例如: 101)""
         <button class="btn btn-primary" onclick="queryPoint()">查詢</button>
       </div>
       <div id="queryResult"></div>
@@ -58,7 +58,7 @@
             <table class="table table-hover align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th scope="col" class="ps-4">姓名 (學號)</th>
+                  <th scope="col" class="ps-4">姓名</th>
                   <th scope="col" class="text-center">目前總點數</th>
                   <th scope="col" class="text-end pe-4">本週加/減點數</th>
                 </tr>
@@ -132,7 +132,7 @@
   // ================= 學生功能 =================
   async function queryPoint() {
     const id = document.getElementById('stuId').value.trim();
-    if (!id) return alert('請輸入學號');
+    if (!id) return alert('請輸入帳號');
     
     showLoading(true);
     try {
