@@ -6,109 +6,154 @@
   <title>班級點數管理系統</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    body { background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
-    .main-card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); background: white; padding: 20px; }
-    .header-title { font-weight: bold; font-size: 28px; color: #333a41; margin-bottom: 30px; }
-    .table thead th { background-color: #fcfcfc; color: #707070; font-weight: normal; border-bottom: 1px solid #eee; padding: 15px; }
-    .table tbody td { padding: 15px; border-bottom: 1px solid #f8f8f8; vertical-align: middle; }
-    .stu-name { font-weight: 500; color: #2d3436; }
-    .point-input { width: 100px; border-radius: 8px; border: 1px solid #ddd; text-align: center; color: #b2bec3; }
-    .point-input:focus { color: #2d3436; border-color: #4a90e2; outline: none; box-shadow: none; }
-    .btn-submit-all { background-color: #4e73df; border: none; padding: 12px 40px; border-radius: 10px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
-    .btn-submit-all:hover { background-color: #2e59d9; transform: translateY(-2px); }
+    body { background-color: #f4f7f6; font-family: "Microsoft JhengHei", sans-serif; }
+    .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .header-area { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+    .point-input { width: 80px; border-radius: 6px; border: 1px solid #ddd; text-align: center; }
+    .nav-tabs .nav-link { color: #666; font-weight: bold; }
+    .nav-tabs .nav-link.active { color: #4e73df; }
   </style>
 </head>
-<body>
+<body class="py-4">
 
-<div class="container py-5" style="max-width: 900px;">
-  <div class="header-title">🎓 班級點數管理系統</div>
+<div class="container" style="max-width: 800px;">
+  <div class="header-area text-center">
+    <h2 class="fw-bold">🎓 班級點數管理系統</h2>
+  </div>
 
-  <div id="loginSection" class="main-card mb-4">
-    <div class="input-group">
-      <input type="password" id="pwd" class="form-control" placeholder="請輸入管理密碼以開始編輯">
-      <button class="btn btn-dark" onclick="login()">登入系統</button>
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">🔍 學生個人查詢</h5>
+      <div class="row g-2">
+        <div class="col-5"><input type="text" id="stuId" class="form-control" placeholder="學號"></div>
+        <div class="col-5"><input type="password" id="stuPwd" class="form-control" placeholder="查詢密碼"></div>
+        <div class="col-2"><button class="btn btn-primary w-100" onclick="studentQuery()">查詢</button></div>
+      </div>
+      <div id="queryStatus" class="mt-2"></div>
     </div>
   </div>
 
-  <div id="adminPanel" style="display:none;" class="main-card">
-    <h5 class="mb-4 fw-bold">每週點數紀錄</h5>
-    <div class="table-responsive">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>姓名</th>
-            <th class="text-center">目前總點數</th>
-            <th class="text-end">本週加/減點數</th>
-          </tr>
-        </thead>
-        <tbody id="stuTable">
-          </tbody>
-      </table>
+  <div id="loginBox" class="card mb-4">
+    <div class="card-body">
+      <h5 class="fw-bold mb-3">🔐 管理員登入</h5>
+      <div class="input-group">
+        <input type="password" id="adminPwd" class="form-control" placeholder="請輸入管理密碼">
+        <button class="btn btn-dark" onclick="adminLogin()">進入後台</button>
+      </div>
     </div>
-    
-    <div class="text-center">
-      <button class="btn btn-primary btn-submit-all shadow" id="submitBtn" onclick="submitUpdates()">
-        ✅ 統一更新全班點數
-      </button>
+  </div>
+
+  <div id="adminPanel" style="display:none;">
+    <ul class="nav nav-tabs mb-3" id="adminTabs">
+      <li class="nav-item"><a class="nav-link active" href="#" onclick="switchTab('edit')">每週紀錄</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" onclick="switchTab('import')">大量匯入</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" onclick="switchTab('setting')">系統設定</a></li>
+    </ul>
+
+    <div id="tab-edit" class="card p-3">
+      <table class="table align-middle">
+        <thead><tr><th>姓名 (學號)</th><th class="text-center">目前總分</th><th class="text-end">加/減分</th></tr></thead>
+        <tbody id="stuListBody"></tbody>
+      </table>
+      <button class="btn btn-primary btn-lg w-100 mt-3" id="updateBtn" onclick="submitBatch()">✅ 統一更新全班點數</button>
+    </div>
+
+    <div id="tab-import" class="card p-3" style="display:none;">
+      <h6>📥 大量匯入名單 (CSV 格式)</h6>
+      <p class="text-muted small">格式：學號,姓名,目前總分,查詢密碼</p>
+      <textarea id="csvData" class="form-control mb-3" rows="8" placeholder="101,王小明,50,pwd123"></textarea>
+      <button class="btn btn-success w-100" onclick="importData()">執行覆蓋匯入</button>
+    </div>
+
+    <div id="tab-setting" class="card p-3" style="display:none;">
+      <h6>🔑 修改管理員登入密碼</h6>
+      <div class="input-group">
+        <input type="text" id="newAdminPwd" class="form-control" placeholder="輸入新密碼">
+        <button class="btn btn-outline-secondary" onclick="changeAdminPwd()">確認修改</button>
+      </div>
+      <hr>
+      <button class="btn btn-link text-danger" onclick="location.reload()">登出系統</button>
     </div>
   </div>
 </div>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxcnQROe3k2F_jk1YTf_dsfrE9yq0vONUPb_lutqiQjjGBC2WfFdkZJeIGPtOqlppLZ/exec'; // 務必替換
-  let currentPwd = '';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwqL77hSIy6xTWrcargQbfhdQO1k-EHdPmlOB1AoxNqkPkAcpFt3K7R0nP0sNVC2K8q/exec'; // 務必替換
+  let currentAdminPwd = '';
 
-  async function login() {
-    const p = document.getElementById('pwd').value;
-    const res = await fetch(`${GAS_URL}?action=getAllStudents&pwd=${p}`);
+  // 1. 學生查詢 (含密碼)
+  async function studentQuery() {
+    const id = document.getElementById('stuId').value;
+    const pwd = document.getElementById('stuPwd').value;
+    const res = await fetch(`${GAS_URL}?action=studentQuery&id=${id}&pwd=${pwd}`);
+    const data = await res.json();
+    const div = document.getElementById('queryStatus');
+    div.innerHTML = data.success ? `<div class="alert alert-success mt-2"><b>${data.name}</b> 同學：目前總點數 <b>${data.points}</b></div>` : `<div class="alert alert-danger mt-2">${data.msg}</div>`;
+  }
+
+  // 2. 管理員登入並獲取資料
+  async function adminLogin() {
+    const pwd = document.getElementById('adminPwd').value;
+    const res = await fetch(`${GAS_URL}?action=getAdminData&adminPwd=${pwd}`);
     const data = await res.json();
     if(data.success) {
-      currentPwd = p;
-      document.getElementById('loginSection').style.display = 'none';
+      currentAdminPwd = pwd;
+      document.getElementById('loginBox').style.display = 'none';
       document.getElementById('adminPanel').style.display = 'block';
       renderTable(data.data);
-    } else { alert('密碼錯誤'); }
+    } else { alert(data.msg); }
   }
 
-  function renderTable(students) {
-    const html = students.map(s => `
+  function renderTable(list) {
+    document.getElementById('stuListBody').innerHTML = list.map(s => `
       <tr>
-        <td class="stu-name">${s.id}${s.name}</td>
+        <td><b>${s.name}</b> <small class="text-muted">${s.id}</small></td>
         <td class="text-center fw-bold">${s.total}</td>
-        <td class="text-end">
-          <input type="number" class="form-control point-input d-inline-block" 
-                 id="in-${s.id}" data-id="${s.id}" placeholder="+/-">
-        </td>
+        <td class="text-end"><input type="number" class="point-input" id="in-${s.id}" data-id="${s.id}" placeholder="+/-"></td>
       </tr>
     `).join('');
-    document.getElementById('stuTable').innerHTML = html;
   }
 
-  async function submitUpdates() {
+  // 3. 批次更新 (留在原畫面)
+  async function submitBatch() {
     const inputs = document.querySelectorAll('.point-input');
     const updates = [];
-    inputs.forEach(input => {
-      if(input.value && input.value != 0) {
-        updates.push({ id: input.dataset.id, change: input.value });
-      }
+    inputs.forEach(i => { if(i.value && i.value != 0) updates.push({id: i.dataset.id, val: i.value}); });
+    if(updates.length === 0) return alert('未輸入資料');
+
+    document.getElementById('updateBtn').innerText = '更新中...';
+    const res = await fetch(`${GAS_URL}?action=batchUpdate&adminPwd=${currentAdminPwd}&updates=${encodeURIComponent(JSON.stringify(updates))}`);
+    const data = await res.json();
+    alert(data.msg);
+    if(data.success) adminLogin(); // 重新整理資料但不跳頁
+    document.getElementById('updateBtn').innerText = '✅ 統一更新全班點數';
+  }
+
+  // 4. 大量匯入
+  async function importData() {
+    const csv = document.getElementById('csvData').value;
+    if(!confirm('這將覆蓋現有名單，確定嗎？')) return;
+    const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ adminPwd: currentAdminPwd, csv: csv }) });
+    const data = await res.json();
+    alert(data.msg);
+    if(data.success) adminLogin();
+  }
+
+  // 5. 修改管理密碼
+  async function changeAdminPwd() {
+    const np = document.getElementById('newAdminPwd').value;
+    const res = await fetch(`${GAS_URL}?action=updateAdminPwd&adminPwd=${currentAdminPwd}&newPwd=${np}`);
+    const data = await res.json();
+    alert(data.msg);
+    if(data.success) currentAdminPwd = np;
+  }
+
+  function switchTab(tab) {
+    ['edit', 'import', 'setting'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = (t === tab ? 'block' : 'none');
     });
-
-    if(updates.length === 0) return alert('尚未輸入任何加減分');
-
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.innerText = '處理中...';
-
-    try {
-      const res = await fetch(`${GAS_URL}?action=batchUpdate&pwd=${currentPwd}&updates=${encodeURIComponent(JSON.stringify(updates))}`);
-      const data = await res.json();
-      alert(data.msg);
-      if(data.success) location.reload(); // 更新完畢自動刷新，顯示最新總分
-    } catch(e) {
-      alert('連線錯誤');
-      btn.disabled = false;
-      btn.innerText = '統一更新全班點數';
-    }
+    document.querySelectorAll('#adminTabs .nav-link').forEach(l => l.classList.remove('active'));
+    event.target.classList.add('active');
   }
 </script>
 </body>
