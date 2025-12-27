@@ -2,98 +2,332 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>學生點數管理系統 (GitHub 版)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>學生點數管理系統</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .student-row { transition: background-color 0.3s; }
+    .student-row:hover { background-color: #f8f9fa; }
+    /* 調整輸入框樣式以符合圖片 */
+    .point-input-group { max-width: 150px; }
+  </style>
 </head>
 <body class="bg-light">
-<div class="container py-5" style="max-width: 600px;">
-  <h2 class="text-center mb-4">🏆 學生點數查詢與管理</h2>
+<div class="container py-4" style="max-width: 800px;">
+  <h2 class="text-center mb-4 fw-bold">🎓 學生表現積點系統</h2>
 
   <div class="card mb-4 shadow-sm">
+    <div class="card-header bg-primary text-white">
+      🔍 學生點數查詢
+    </div>
     <div class="card-body">
-      <h5>🔍 點數查詢</h5>
+      <div class="input-group mb-3">
+        <input type="text" id="stuId" class="form-control" placeholder="請輸入學號 (例如: 101)">
+        <button class="btn btn-primary" onclick="queryPoint()">查詢</button>
+      </div>
+      <div id="queryResult"></div>
+    </div>
+  </div>
+
+  <div id="loginArea" class="card shadow-sm mb-4">
+    <div class="card-header bg-dark text-white">
+      🔐 管理員登入
+    </div>
+    <div class="card-body">
       <div class="input-group">
-        <input type="text" id="stuId" class="form-control" placeholder="輸入學號">
-        <button class="btn btn-primary" onclick="doAction('query')">查詢</button>
+        <input type="password" id="adminPwd" class="form-control" placeholder="請輸入管理密碼">
+        <button class="btn btn-dark" onclick="adminLogin()">登入後台</button>
       </div>
-      <div id="queryResult" class="mt-3"></div>
     </div>
   </div>
 
-  <div id="loginArea" class="card shadow-sm">
-    <div class="card-body">
-      <h5>🔐 管理員登入</h5>
-      <input type="password" id="adminPwd" class="form-control mb-2" placeholder="管理密碼">
-      <button class="btn btn-dark w-100" onclick="showAdmin()">進入管理後台</button>
+  <div id="adminPanel" style="display:none;">
+    
+    <div class="d-flex justify-content-between mb-3">
+      <button class="btn btn-outline-primary active" id="btnShowList" onclick="switchAdminView('list')">📋 個別點數管理</button>
+      <button class="btn btn-outline-secondary" id="btnShowTools" onclick="switchAdminView('tools')">🛠️ 其他管理工具</button>
     </div>
-  </div>
 
-  <div id="adminPanel" class="mt-4" style="display:none;">
-    <div class="card border-danger mb-3">
-      <div class="card-body text-center">
-        <button class="btn btn-danger w-100 mb-2" onclick="doAction('batchUpdate')">★ 統一結算本週點數</button>
-        <small class="text-muted">將本週加減分數併入總分並歸零</small>
+    <div id="adminListView">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white fw-bold fs-5">
+          每週點數紀錄
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col" class="ps-4">姓名 (學號)</th>
+                  <th scope="col" class="text-center">目前總點數</th>
+                  <th scope="col" class="text-end pe-4">本週加/減點數</th>
+                </tr>
+              </thead>
+              <tbody id="studentTableBody">
+                <tr><td colspan="3" class="text-center py-3">載入中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="card mb-3">
-      <div class="card-body">
-        <h6>📥 大量匯入名單 (CSV)</h6>
-        <textarea id="csvInput" class="form-control mb-2" rows="3" placeholder="學號,姓名,總分,本週分"></textarea>
-        <button class="btn btn-success w-100" onclick="importCSV()">執行匯入</button>
+    <div id="adminToolsView" style="display:none;">
+      <div class="row g-3">
+        <div class="col-md-12">
+          <div class="card border-danger h-100">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+              <h5 class="card-title text-danger">⚡ 每週點數結算</h5>
+              <p class="card-text text-muted small mb-3">將所有學生的「本週點數」累加到「總點數」，並清空本週紀錄。</p>
+              <button class="btn btn-danger w-100" onclick="doAdminAction('batchUpdate')">執行本週結算</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h6 class="card-title">📥 大量匯入名單 (CSV)</h6>
+              <textarea id="csvInput" class="form-control mb-2" rows="4" placeholder="格式: 學號,姓名,總分,本週分&#10;例如: 101,王小明,50,0"></textarea>
+              <button class="btn btn-success w-100" onclick="importCSV()">匯入資料</button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <h6 class="card-title">🔑 修改管理密碼</h6>
+              <input type="text" id="newPwd" class="form-control mb-2" placeholder="輸入新密碼">
+              <button class="btn btn-outline-secondary w-100" onclick="doAdminAction('changePwd')">確認修改</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="card mb-3">
-      <div class="card-body">
-        <h6>🔑 修改密碼</h6>
-        <div class="input-group">
-          <input type="text" id="newPwd" class="form-control">
-          <button class="btn btn-outline-secondary" onclick="doAction('changePwd')">修改</button>
+  </div> <div id="loadingToast" class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="liveToast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          處理中，請稍候...
         </div>
       </div>
     </div>
   </div>
+
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  // 🔗 請替換成你的 GAS 網址
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbwrcE0v6gMKvhDWWU5Oa8Qz1_9_3xYJknmqSDXspSqHkHh4N35UbJ2O4AtOqTzLFOJu/exec';
+  // 🔥 請將此處替換為您部署後的 Google Apps Script 網址
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbynfpyuMx8yyPtAjV6i92yDiTxzC0p085breutDHLmJzfWnvYMLVyt7iPn-R5i_g8Mk/exec';
 
-  async function doAction(action) {
-    const pwd = document.getElementById('adminPwd').value;
-    const id = document.getElementById('stuId').value;
-    const newPwd = document.getElementById('newPwd').value;
-    
-    let url = `${GAS_URL}?action=${action}&pwd=${pwd}`;
-    if(action === 'query') url += `&id=${id}`;
-    if(action === 'changePwd') url += `&newPwd=${newPwd}`;
+  let currentAdminPwd = '';
+  const loadingToast = new bootstrap.Toast(document.getElementById('liveToast'));
 
-    const res = await fetch(url);
-    const data = await res.json();
+  // --- 顯示/隱藏 Loading ---
+  function showLoading(show) {
+    show ? loadingToast.show() : loadingToast.hide();
+  }
+
+  // ================= 學生功能 =================
+  async function queryPoint() {
+    const id = document.getElementById('stuId').value.trim();
+    if (!id) return alert('請輸入學號');
     
-    if (action === 'query') {
-      const div = document.getElementById('queryResult');
-      div.innerHTML = data.success ? `<div class="alert alert-success">${data.data.name} 同學：${data.data.points} 點</div>` : `<div class="alert alert-danger">${data.msg}</div>`;
-    } else {
-      alert(data.msg);
+    showLoading(true);
+    try {
+      const res = await fetch(`${GAS_URL}?action=query&id=${id}`);
+      const data = await res.json();
+      const resultDiv = document.getElementById('queryResult');
+      if (data.success) {
+        resultDiv.innerHTML = `<div class="alert alert-success mt-3 mb-0 fw-bold">${data.data.name} 同學，你的目前總點數為：<span class="fs-4">${data.data.points}</span> 點</div>`;
+      } else {
+        resultDiv.innerHTML = `<div class="alert alert-danger mt-3 mb-0">${data.msg}</div>`;
+      }
+    } catch (err) {
+      alert('查詢失敗，請檢查網路或稍後再試。');
+    } finally {
+      showLoading(false);
     }
   }
 
-  async function importCSV() {
+  // ================= 管理員功能 =================
+  
+  // 1. 管理員登入
+  async function adminLogin() {
     const pwd = document.getElementById('adminPwd').value;
-    const csv = document.getElementById('csvInput').value;
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'import', pwd: pwd, csv: csv })
-    });
-    const data = await res.json();
-    alert(data.msg);
+    if (!pwd) return alert('請輸入密碼');
+
+    showLoading(true);
+    // 嘗試抓取學生列表來驗證密碼
+    const url = `${GAS_URL}?action=getAllStudents&pwd=${pwd}`;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      if (data.success) {
+        currentAdminPwd = pwd; // 暫存密碼供後續操作使用
+        document.getElementById('loginArea').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        renderStudentTable(data.data); // 登入成功後，渲染學生列表
+      } else {
+        alert(data.msg);
+      }
+    } catch (err) {
+      alert('登入失敗，請檢查網路。');
+    } finally {
+      showLoading(false);
+    }
   }
 
-  function showAdmin() {
-    document.getElementById('adminPanel').style.display = 'block';
-    document.getElementById('loginArea').style.display = 'none';
+  // 2. 渲染學生列表 (仿照圖片樣式)
+  function renderStudentTable(students) {
+    const tbody = document.getElementById('studentTableBody');
+    tbody.innerHTML = ''; // 清空現有內容
+    
+    if (students.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3">目前沒有學生資料</td></tr>';
+      return;
+    }
+
+    students.forEach(stu => {
+      const tr = document.createElement('tr');
+      tr.className = 'student-row';
+      tr.innerHTML = `
+        <td class="ps-4 fw-bold">
+          <span class="text-primary">${stu.id}</span> ${stu.name}
+        </td>
+        <td class="text-center fs-5 fw-bold">${stu.total}</td>
+        <td class="text-end pe-4 py-2">
+          <div class="input-group point-input-group ms-auto">
+            <input type="number" class="form-control text-center" placeholder="+/-" id="input-${stu.id}">
+            <button class="btn btn-outline-primary" type="button" onclick="updatePoint('${stu.id}', '${stu.name}')">確認</button>
+          </div>
+          <div class="text-muted small mt-1">本週已登記: <span id="weekly-${stu.id}">${stu.weekly}</span></div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // 3. [新功能] 更新單一學生點數
+  async function updatePoint(stuId, stuName) {
+    const inputField = document.getElementById(`input-${stuId}`);
+    const points = inputField.value;
+    if (!points || points == 0) return alert('請輸入要增加或減少的點數 (不能為 0)');
+
+    showLoading(true);
+    const url = `${GAS_URL}?action=updateIndividual&id=${stuId}&points=${points}&pwd=${currentAdminPwd}`;
+    
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success) {
+        // 更新成功後，只需更新該學生的「本週已登記」數值，不用重整整個表格
+        document.getElementById(`weekly-${stuId}`).innerText = data.newWeekly;
+        inputField.value = ''; // 清空輸入框
+        // 顯示一個小的成功提示
+        const toast = new bootstrap.Toast(document.getElementById('liveToast'));
+        document.querySelector('.toast-body').innerText = `已更新 ${stuName} 的點數！`;
+        toast.show();
+        setTimeout(() => toast.hide(), 2000);
+      } else {
+        alert(data.msg);
+      }
+    } catch (err) {
+      alert('更新失敗，請稍後再試。');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  // 4. 切換管理介面視圖 (列表/工具)
+  function switchAdminView(view) {
+    const listView = document.getElementById('adminListView');
+    const toolsView = document.getElementById('adminToolsView');
+    const btnList = document.getElementById('btnShowList');
+    const btnTools = document.getElementById('btnShowTools');
+
+    if (view === 'list') {
+      listView.style.display = 'block';
+      toolsView.style.display = 'none';
+      btnList.classList.add('active', 'btn-outline-primary');
+      btnList.classList.remove('btn-outline-secondary');
+      btnTools.classList.add('btn-outline-secondary');
+      btnTools.classList.remove('active', 'btn-outline-primary');
+      // 切換回列表時，重新抓取資料以確保同步
+      if (currentAdminPwd) reloadStudentTable();
+    } else {
+      listView.style.display = 'none';
+      toolsView.style.display = 'block';
+      btnTools.classList.add('active', 'btn-outline-primary');
+      btnTools.classList.remove('btn-outline-secondary');
+      btnList.classList.add('btn-outline-secondary');
+      btnList.classList.remove('active', 'btn-outline-primary');
+    }
+  }
+
+  // 重新載入表格資料的輔助函式
+  async function reloadStudentTable() {
+    showLoading(true);
+    try {
+      const res = await fetch(`${GAS_URL}?action=getAllStudents&pwd=${currentAdminPwd}`);
+      const data = await res.json();
+      if (data.success) renderStudentTable(data.data);
+    } catch(e) { console.error(e); } finally { showLoading(false); }
+  }
+
+  // 5. 執行其他管理動作 (結算、改密碼)
+  async function doAdminAction(action) {
+    let url = `${GAS_URL}?action=${action}&pwd=${currentAdminPwd}`;
+    if (action === 'batchUpdate') {
+      if (!confirm('確定要結算本週點數嗎？\n這將會把「本週加/減」累加到「總點數」並清空本週紀錄。')) return;
+    } else if (action === 'changePwd') {
+      const newPwd = document.getElementById('newPwd').value;
+      if (!newPwd) return alert('請輸入新密碼');
+      url += `&newPwd=${newPwd}`;
+    }
+
+    showLoading(true);
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      alert(data.msg);
+      if (data.success && action === 'batchUpdate') {
+        // 結算成功後，重新載入表格以顯示更新後的總分和清空的本週分數
+        switchAdminView('list');
+      }
+      if (data.success && action === 'changePwd') document.getElementById('newPwd').value = '';
+    } catch (err) {
+      alert('執行失敗，請檢查網路。');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  // 6. 大量匯入 (POST 請求)
+  async function importCSV() {
+    const csv = document.getElementById('csvInput').value;
+    if (!csv) return alert('請輸入要匯入的資料');
+    if (!confirm('警告：這將會「完全覆蓋」目前的學生名單和點數紀錄！確定要繼續嗎？')) return;
+
+    showLoading(true);
+    try {
+      const res = await fetch(GAS_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'import', pwd: currentAdminPwd, csv: csv })
+      });
+      const data = await res.json();
+      alert(data.msg);
+      if (data.success) {
+        document.getElementById('csvInput').value = '';
+        reloadStudentTable(); // 匯入成功後刷新列表
+      }
+    } catch (err) {
+      alert('匯入失敗，請檢查資料格式或網路。');
+    } finally {
+      showLoading(false);
+    }
   }
 </script>
 </body>
