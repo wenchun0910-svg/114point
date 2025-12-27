@@ -3,114 +3,112 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>學生點數管理系統</title>
+  <title>班級點數管理系統</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
-    .student-row:hover { background-color: #f8f9fa; }
-    .point-input { width: 80px; text-align: center; }
-    .sticky-bottom-btn { position: sticky; bottom: 20px; z-index: 1000; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); }
+    body { background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
+    .main-card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); background: white; padding: 20px; }
+    .header-title { font-weight: bold; font-size: 28px; color: #333a41; margin-bottom: 30px; }
+    .table thead th { background-color: #fcfcfc; color: #707070; font-weight: normal; border-bottom: 1px solid #eee; padding: 15px; }
+    .table tbody td { padding: 15px; border-bottom: 1px solid #f8f8f8; vertical-align: middle; }
+    .stu-name { font-weight: 500; color: #2d3436; }
+    .point-input { width: 100px; border-radius: 8px; border: 1px solid #ddd; text-align: center; color: #b2bec3; }
+    .point-input:focus { color: #2d3436; border-color: #4a90e2; outline: none; box-shadow: none; }
+    .btn-submit-all { background-color: #4e73df; border: none; padding: 12px 40px; border-radius: 10px; font-weight: bold; margin-top: 20px; transition: 0.3s; }
+    .btn-submit-all:hover { background-color: #2e59d9; transform: translateY(-2px); }
   </style>
 </head>
-<body class="bg-light pb-5">
-<div class="container py-4" style="max-width: 700px;">
-  <h2 class="text-center mb-4 fw-bold">🎓 班級點數管理系統</h2>
+<body>
 
-  <div id="adminPanel" style="display:none;">
-    <div class="card shadow-sm mb-4">
-      <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
-        <span>每週點數輸入列表</span>
-        <button class="btn btn-sm btn-outline-secondary" onclick="toggleTools()">更多工具</button>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th class="ps-4">姓名 (學號)</th>
-                <th class="text-center">目前總分</th>
-                <th class="text-end pe-4">本次加/減分</th>
-              </tr>
-            </thead>
-            <tbody id="studentTableBody">
-              </tbody>
-          </table>
-        </div>
-      </div>
+<div class="container py-5" style="max-width: 900px;">
+  <div class="header-title">🎓 班級點數管理系統</div>
+
+  <div id="loginSection" class="main-card mb-4">
+    <div class="input-group">
+      <input type="password" id="pwd" class="form-control" placeholder="請輸入管理密碼以開始編輯">
+      <button class="btn btn-dark" onclick="login()">登入系統</button>
     </div>
+  </div>
 
-    <div class="text-center sticky-bottom-btn">
-      <button class="btn btn-primary btn-lg px-5 shadow" onclick="submitBatchUpdates()">
-        🚀 統一送出本次所有修改
+  <div id="adminPanel" style="display:none;" class="main-card">
+    <h5 class="mb-4 fw-bold">每週點數紀錄</h5>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>姓名</th>
+            <th class="text-center">目前總點數</th>
+            <th class="text-end">本週加/減點數</th>
+          </tr>
+        </thead>
+        <tbody id="stuTable">
+          </tbody>
+      </table>
+    </div>
+    
+    <div class="text-center">
+      <button class="btn btn-primary btn-submit-all shadow" id="submitBtn" onclick="submitUpdates()">
+        ✅ 統一更新全班點數
       </button>
     </div>
-
-    <div id="extraTools" class="mt-4 card p-3" style="display:none;">
-       <h6>更多功能</h6>
-       <hr>
-       <button class="btn btn-outline-danger mb-2" onclick="location.reload()">登出系統</button>
-       </div>
   </div>
 </div>
 
 <script>
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbzsXLAfuBb9rCyaGvT2aosE-TnuXlagWI2e3ITeXbOfbNC8ViC7zLy4BjBe9iWXA-kT/exec';
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbxcnQROe3k2F_jk1YTf_dsfrE9yq0vONUPb_lutqiQjjGBC2WfFdkZJeIGPtOqlppLZ/exec'; // 務必替換
   let currentPwd = '';
 
-  // 渲染列表：移除按鈕與「已登記」字樣
+  async function login() {
+    const p = document.getElementById('pwd').value;
+    const res = await fetch(`${GAS_URL}?action=getAllStudents&pwd=${p}`);
+    const data = await res.json();
+    if(data.success) {
+      currentPwd = p;
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('adminPanel').style.display = 'block';
+      renderTable(data.data);
+    } else { alert('密碼錯誤'); }
+  }
+
   function renderTable(students) {
-    const tbody = document.getElementById('studentTableBody');
-    tbody.innerHTML = students.map(stu => `
-      <tr class="student-row">
-        <td class="ps-4"><strong>${stu.name}</strong> <small class="text-muted">${stu.id}</small></td>
-        <td class="text-center fw-bold fs-5">${stu.total}</td>
-        <td class="text-end pe-4">
-          <input type="number" class="form-control d-inline-block point-input" 
-                 id="input-${stu.id}" data-id="${stu.id}" placeholder="+/-">
+    const html = students.map(s => `
+      <tr>
+        <td class="stu-name">${s.id}${s.name}</td>
+        <td class="text-center fw-bold">${s.total}</td>
+        <td class="text-end">
+          <input type="number" class="form-control point-input d-inline-block" 
+                 id="in-${s.id}" data-id="${s.id}" placeholder="+/-">
         </td>
       </tr>
     `).join('');
+    document.getElementById('stuTable').innerHTML = html;
   }
 
-  // 核心功能：蒐集所有輸入框的值，一次送出
-  async function submitBatchUpdates() {
+  async function submitUpdates() {
     const inputs = document.querySelectorAll('.point-input');
     const updates = [];
-    
     inputs.forEach(input => {
-      const val = parseInt(input.value);
-      if (val && val !== 0) { // 只抓取有填寫數字且不為 0 的列
-        updates.push({ id: input.dataset.id, val: val });
+      if(input.value && input.value != 0) {
+        updates.push({ id: input.dataset.id, change: input.value });
       }
     });
 
-    if (updates.length === 0) return alert('請先輸入至少一位學生的加減分數。');
+    if(updates.length === 0) return alert('尚未輸入任何加減分');
 
-    if (!confirm(`確定要為這 ${updates.length} 位學生更新點數嗎？`)) return;
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerText = '處理中...';
 
-    // 顯示處理中（可自訂 loading 畫面）
-    document.querySelector('.sticky-bottom-btn button').innerText = '處理中...';
-    
-    const url = `${GAS_URL}?action=batchIndividualUpdate&pwd=${currentPwd}&updates=${encodeURIComponent(JSON.stringify(updates))}`;
-    
     try {
-      const res = await fetch(url);
+      const res = await fetch(`${GAS_URL}?action=batchUpdate&pwd=${currentPwd}&updates=${encodeURIComponent(JSON.stringify(updates))}`);
       const data = await res.json();
       alert(data.msg);
-      if (data.success) {
-        // 更新完成後，自動重新抓取名單以反映最新總分，並清空輸入框
-        adminLogin(); 
-      }
-    } catch (e) {
-      alert('連線失敗');
-    } finally {
-      document.querySelector('.sticky-bottom-btn button').innerText = '🚀 統一送出本次所有修改';
+      if(data.success) location.reload(); // 更新完畢自動刷新，顯示最新總分
+    } catch(e) {
+      alert('連線錯誤');
+      btn.disabled = false;
+      btn.innerText = '統一更新全班點數';
     }
-  }
-
-  // 登入功能與 adminLogin() 維持之前的邏輯，只需確保會呼叫 renderTable(data.data)
-  function toggleTools() {
-    const t = document.getElementById('extraTools');
-    t.style.display = t.style.display === 'none' ? 'block' : 'none';
   }
 </script>
 </body>
