@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>學生點數管理系統 (GitHub 版)</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container py-5" style="max-width: 600px;">
+  <h2 class="text-center mb-4">🏆 學生點數查詢與管理</h2>
+
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <h5>🔍 點數查詢</h5>
+      <div class="input-group">
+        <input type="text" id="stuId" class="form-control" placeholder="輸入學號">
+        <button class="btn btn-primary" onclick="doAction('query')">查詢</button>
+      </div>
+      <div id="queryResult" class="mt-3"></div>
+    </div>
+  </div>
+
+  <div id="loginArea" class="card shadow-sm">
+    <div class="card-body">
+      <h5>🔐 管理員登入</h5>
+      <input type="password" id="adminPwd" class="form-control mb-2" placeholder="管理密碼">
+      <button class="btn btn-dark w-100" onclick="showAdmin()">進入管理後台</button>
+    </div>
+  </div>
+
+  <div id="adminPanel" class="mt-4" style="display:none;">
+    <div class="card border-danger mb-3">
+      <div class="card-body text-center">
+        <button class="btn btn-danger w-100 mb-2" onclick="doAction('batchUpdate')">★ 統一結算本週點數</button>
+        <small class="text-muted">將本週加減分數併入總分並歸零</small>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6>📥 大量匯入名單 (CSV)</h6>
+        <textarea id="csvInput" class="form-control mb-2" rows="3" placeholder="學號,姓名,總分,本週分"></textarea>
+        <button class="btn btn-success w-100" onclick="importCSV()">執行匯入</button>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6>🔑 修改密碼</h6>
+        <div class="input-group">
+          <input type="text" id="newPwd" class="form-control">
+          <button class="btn btn-outline-secondary" onclick="doAction('changePwd')">修改</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 🔗 請替換成你的 GAS 網址
+  const GAS_URL = '您的_GOOGLE_APPS_SCRIPT_網址';
+
+  async function doAction(action) {
+    const pwd = document.getElementById('adminPwd').value;
+    const id = document.getElementById('stuId').value;
+    const newPwd = document.getElementById('newPwd').value;
+    
+    let url = `${GAS_URL}?action=${action}&pwd=${pwd}`;
+    if(action === 'query') url += `&id=${id}`;
+    if(action === 'changePwd') url += `&newPwd=${newPwd}`;
+
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    if (action === 'query') {
+      const div = document.getElementById('queryResult');
+      div.innerHTML = data.success ? `<div class="alert alert-success">${data.data.name} 同學：${data.data.points} 點</div>` : `<div class="alert alert-danger">${data.msg}</div>`;
+    } else {
+      alert(data.msg);
+    }
+  }
+
+  async function importCSV() {
+    const pwd = document.getElementById('adminPwd').value;
+    const csv = document.getElementById('csvInput').value;
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'import', pwd: pwd, csv: csv })
+    });
+    const data = await res.json();
+    alert(data.msg);
+  }
+
+  function showAdmin() {
+    document.getElementById('adminPanel').style.display = 'block';
+    document.getElementById('loginArea').style.display = 'none';
+  }
+</script>
+</body>
+</html>
