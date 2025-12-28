@@ -31,7 +31,7 @@
 
       <div id="tab-edit" class="card p-3">
         <table class="table align-middle">
-          <thead><tr><th>學號/姓名</th><th class="text-center">目前總分</th><th class="text-end">本週 +/-</th></tr></thead>
+          <thead><tr><th>座號/姓名</th><th class="text-center">目前總分</th><th class="text-end">本週 +/-</th></tr></thead>
           <tbody id="stuList"></tbody>
         </table>
         <button class="btn btn-primary btn-lg w-100 mt-3" id="saveBtn" onclick="submitBatch()">✅ 統一更新全班點數</button>
@@ -39,7 +39,7 @@
 
       <div id="tab-import" class="card p-4" style="display:none;">
         <h5>📥 大量更新點數</h5>
-        <p class="small text-muted">格式：學號,點數 (直接覆蓋目前分數)</p>
+        <p class="small text-muted">格式：座號,點數 (直接覆蓋目前分數)</p>
         <textarea id="csvInput" class="form-control mb-3" rows="10" placeholder="1,10&#10;2,-5&#10;3,160"></textarea>
         <button class="btn btn-success w-100" onclick="importCSV()">執行大量更新</button>
       </div>
