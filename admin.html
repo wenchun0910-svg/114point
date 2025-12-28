@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>點數管理後台</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
+    .main-container { max-width: 800px; margin: 40px auto; }
+    .card { border: none; border-radius: 12px; box-shadow: 0 2px 15px rgba(0,0,0,0.05); }
+    .point-input { width: 85px; border-radius: 8px; border: 1px solid #ddd; text-align: center; }
+    .nav-link { font-weight: bold; color: #555; }
+    .nav-link.active { color: #4e73df !important; }
+  </style>
+</head>
+<body class="pb-5">
+  <div class="container main-container">
+    <h2 class="text-center fw-bold mb-4">⚙️ 點數管理後台</h2>
+
+    <div id="loginSection" class="card p-4 mb-4">
+      <h5 class="fw-bold mb-3">管理員驗證</h5>
+      <div class="input-group">
+        <input type="password" id="adminPwd" class="form-control" placeholder="輸入管理密碼">
+        <button class="btn btn-dark" onclick="login()">登入後台</button>
+      </div>
+    </div>
+
+    <div id="adminPanel" style="display:none;">
+      <ul class="nav nav-pills mb-3 justify-content-center" id="pills-tab">
+        <li class="nav-item"><button class="nav-link active" onclick="showTab('edit')">每週加減點</button></li>
+        <li class="nav-item"><button class="nav-link" onclick="showTab('import')">大量匯入</button></li>
+        <li class="nav-item"><button class="nav-link" onclick="showTab('setting')">密碼設置</button></li>
+      </ul>
+
+      <div id="tab-edit" class="card p-3">
+        <table class="table align-middle">
+          <thead class="table-light"><tr><th>姓名 (學號)</th><th class="text-center">目前總分</th><th class="text-end">本週 +/-</th></tr></thead>
+          <tbody id="stuListBody"></tbody>
+        </table>
+        <button class="btn btn-primary btn-lg w-100 mt-3" id="updateBtn" onclick="submitBatch()">🚀 統一更新全班點數 (不跳頁)</button>
+      </div>
+
+      <div id="tab-import" class="card p-4" style="display:none;">
+        <h5>📥 大量匯入名單</h5>
+        <p class="small text-muted">格式：學號,姓名,目前總點數,查詢密碼</p>
+        <textarea id="csvData" class="form-control mb-3" rows="10" placeholder="101,廖冠恆,1,pw123&#10;102,王璟翔,-5,pw456"></textarea>
+        <button class="btn btn-success w-100" onclick="importCSV()">確認覆蓋並匯入</button>
+      </div>
+
+      <div id="tab-setting" class="card p-4" style="display:none;">
+        <h5>🔑 修改管理員登入密碼</h5>
+        <div class="input-group mb-3">
+          <input type="text" id="newAdminPwd" class="form-control" placeholder="輸入新管理密碼">
+          <button class="btn btn-outline-secondary" onclick="changeAdminPwd()">確認修改</button>
+        </div>
+        <hr>
+        <button class="btn btn-outline-danger w-100" onclick="location.reload()">登出後台</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxttHK1WfAGKvQADn15CM13vaaIVOeko-HaQ6qPfldFOyASts_CA2zZxai37-0jESJO/exec';
+    let currentAdminPwd = '';
+
+    async function login() {
+      const pwd = document.getElementById('adminPwd').value;
+      const res = await fetch(`${GAS_URL}?action=getAdminData&adminPwd=${pwd}`);
+      const data = await res.json();
+      if(data.success) {
+        currentAdminPwd = pwd;
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('adminPanel').style.display = 'block';
+        renderTable(data.data);
+      } else { alert(data.msg); }
+    }
+
+    function renderTable(list) {
+      document.getElementById('stuListBody').innerHTML = list.map(s => `
+        <tr>
+          <td><b>${s.name}</b> <small class="text-muted">${s.id}</small></td>
+          <td class="text-center fw-bold fs-5">${s.total}</td>
+          <td class="text-end"><input type="number" class="point-input" id="in-${s.id}" data-id="${s.id}" placeholder="+/-"></td>
+        </tr>
+      `).join('');
+    }
+
+    async function submitBatch() {
+      const inputs = document.querySelectorAll('.point-input');
+      const updates = [];
+      inputs.forEach(i => { if(i.value && i.value != 0) updates.push({id: i.dataset.id, val: i.value}); });
+      if(updates.length === 0) return alert('未填寫任何點數');
+
+      const btn = document.getElementById('updateBtn');
+      btn.disabled = true; btn.innerText = '更新中...';
+
+      const res = await fetch(`${GAS_URL}?action=batchUpdate&adminPwd=${currentAdminPwd}&updates=${encodeURIComponent(JSON.stringify(updates))}`);
+      const data = await res.json();
+      alert(data.msg);
+      if(data.success) {
+        // 更新成功後留在原畫面並重新讀取最新總點數
+        const refreshRes = await fetch(`${GAS_URL}?action=getAdminData&adminPwd=${currentAdminPwd}`);
+        const refreshData = await refreshRes.json();
+        renderTable(refreshData.data);
+      }
+      btn.disabled = false; btn.innerText = '🚀 統一更新全班點數 (不跳頁)';
+    }
+
+    async function importCSV() {
+      const csv = document.getElementById('csvData').value;
+      if(!csv || !confirm('這將清除舊資料並覆蓋，確定嗎？')) return;
+      const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ adminPwd: currentAdminPwd, csv: csv }) });
+      const data = await res.json();
+      alert(data.msg);
+      if(data.success) location.reload();
+    }
+
+    async function changeAdminPwd() {
+      const np = document.getElementById('newAdminPwd').value;
+      if(!np) return alert('請輸入新密碼');
+      const res = await fetch(`${GAS_URL}?action=updateAdminPwd&adminPwd=${currentAdminPwd}&newPwd=${np}`);
+      const data = await res.json();
+      alert(data.msg);
+      if(data.success) currentAdminPwd = np;
+    }
+
+    function showTab(tab) {
+      ['edit', 'import', 'setting'].forEach(t => document.getElementById('tab-'+t).style.display = (t===tab?'block':'none'));
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.innerText.includes(tab==='edit'?'每週':tab==='import'?'大量':'密碼')));
+    }
+  </script>
+</body>
+</html>
