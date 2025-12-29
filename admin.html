@@ -2,61 +2,86 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>點數管理後台</title>
+  <title>班級點數管理後台</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background-color: #f8f9fa; font-family: "Microsoft JhengHei", sans-serif; }
-    .card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+    .card { border: none; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 25px; }
+    .title-banner { font-weight: bold; font-size: 26px; color: #333; margin: 30px 0; }
     .point-input { width: 90px; border-radius: 8px; border: 1px solid #ddd; text-align: center; }
+    .nav-pills .nav-link { font-weight: bold; color: #666; cursor: pointer; }
+    .nav-pills .nav-link.active { background-color: #4e73df; }
   </style>
 </head>
-<body class="py-5">
-  <div class="container" style="max-width: 800px;">
-    <h2 class="text-center fw-bold mb-4">⚙️ 點數管理後台</h2>
+<body class="pb-5">
+  <div class="container" style="max-width: 850px;">
+    <div class="title-banner text-center">🎓 班級點數管理系統</div>
 
-    <div id="loginBox" class="card p-4 mb-4">
-      <h5>管理員驗證</h5>
+    <div id="loginBox" class="card p-4">
       <div class="input-group">
-        <input type="password" id="adminPwd" class="form-control" placeholder="請輸入管理密碼">
-        <button class="btn btn-dark" onclick="login()">進入系統</button>
+        <input type="password" id="adminPwd" class="form-control" placeholder="請輸入管理密碼以開啟管理功能">
+        <button class="btn btn-dark px-4" onclick="login()">登入</button>
       </div>
     </div>
 
     <div id="adminPanel" style="display:none;">
-      <ul class="nav nav-pills mb-3 justify-content-center">
-        <li class="nav-item"><button class="nav-link active" onclick="showTab('edit')">每週紀錄</button></li>
-        <li class="nav-item"><button class="nav-link" onclick="showTab('import')">大量更新點數</button></li>
-        <li class="nav-item"><button class="nav-link" onclick="showTab('setting')">更改管理密碼</button></li>
+      <ul class="nav nav-pills mb-4 justify-content-center">
+        <li class="nav-item"><a class="nav-link active" onclick="showTab('edit')">手動輸入增減</a></li>
+        <li class="nav-item"><a class="nav-link" onclick="showTab('import')">匯入 Excel/CSV 檔案</a></li>
+        <li class="nav-item"><a class="nav-link" onclick="showTab('setting')">密碼設定</a></li>
       </ul>
 
       <div id="tab-edit" class="card p-3">
-        <table class="table align-middle">
-          <thead><tr><th>座號/姓名</th><th class="text-center">目前總分</th><th class="text-end">本週 +/-</th></tr></thead>
-          <tbody id="stuList"></tbody>
-        </table>
-        <button class="btn btn-primary btn-lg w-100 mt-3" id="saveBtn" onclick="submitBatch()">✅ 統一更新全班點數</button>
+        <h5 class="fw-bold p-3">每週點數紀錄</h5>
+        <div class="table-responsive">
+          <table class="table align-middle">
+            <thead class="table-light">
+              <tr><th>座號姓名</th><th class="text-center">目前總點數</th><th class="text-end">本週加/減點數</th></tr>
+            </thead>
+            <tbody id="stuTable"></tbody>
+          </table>
+        </div>
+        <button class="btn btn-primary btn-lg w-100 mt-2 py-3 fw-bold shadow" id="saveBtn" onclick="submitBatch()">
+           🚀 統一更新全班點數 (執行累加)
+        </button>
       </div>
 
       <div id="tab-import" class="card p-4" style="display:none;">
-        <h5>📥 大量更新點數</h5>
-        <p class="small text-muted">格式：學號,點數 (直接覆蓋目前分數)</p>
-        <textarea id="csvInput" class="form-control mb-3" rows="10" placeholder="1,10&#10;2,-5&#10;3,160"></textarea>
-        <button class="btn btn-success w-100" onclick="importCSV()">執行大量更新</button>
+        <h5 class="fw-bold mb-3">📥 大量更新點數 (檔案內容)</h5>
+        <p class="text-muted small">請從 Excel 複製「座號,點數」兩欄內容貼至下方：</p>
+        <textarea id="csvInput" class="form-control mb-4" rows="10" placeholder="1,5&#10;2,-2&#10;3,10"></textarea>
+        
+        <div class="row g-3">
+          <div class="col-6">
+            <button class="btn btn-outline-primary w-100 py-3 fw-bold" onclick="importData('add')">
+              ➕ 依據匯入內容累加點數
+            </button>
+            <div class="text-center small text-muted mt-1">（例如：100 + 5 = 105）</div>
+          </div>
+          <div class="col-6">
+            <button class="btn btn-outline-danger w-100 py-3 fw-bold" onclick="importData('replace')">
+              🔄 將點數覆蓋為全新值
+            </button>
+            <div class="text-center small text-muted mt-1">（例如：100 變成 5）</div>
+          </div>
+        </div>
       </div>
 
       <div id="tab-setting" class="card p-4" style="display:none;">
-        <h5>🔑 修改管理員登入密碼</h5>
-        <div class="input-group mb-3">
-          <input type="text" id="newAdminPwd" class="form-control" placeholder="輸入新管理密碼">
-          <button class="btn btn-outline-secondary" onclick="changeAdminPwd()">確認修改</button>
+        <h5 class="fw-bold mb-3">系統安全設定</h5>
+        <div class="input-group">
+          <span class="input-group-text">新管理密碼</span>
+          <input type="text" id="newAdminPwd" class="form-control">
+          <button class="btn btn-outline-secondary" onclick="changeAdminPwd()">確認更換</button>
         </div>
-        <button class="btn btn-link text-danger w-100" onclick="location.reload()">登出系統</button>
+        <hr>
+        <button class="btn btn-link text-danger w-100" onclick="location.reload()">安全登出系統</button>
       </div>
     </div>
   </div>
 
   <script>
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbweI64ZeAJWkAo8yBO_ibBGFuPiR7t_-kPRcjpBjgdxGF9NoWDWWxDsvGgy-G7EVtfH/exec'; 
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbze9k1UG6hoa4Q7VmvwgsNkO3oPBk7U4pEu9AxFYuzDnvKkHowG8AfKwYbTLgPXVYG2/exec'; 
     let currentPwd = '';
 
     async function login() {
@@ -72,39 +97,46 @@
     }
 
     function renderTable(list) {
-      document.getElementById('stuList').innerHTML = list.map(s => `
+      document.getElementById('stuTable').innerHTML = list.map(s => `
         <tr>
-          <td><b>${s.id}</b> ${s.name}</td>
+          <td><span class="fw-bold">${s.id}</span> ${s.name}</td>
           <td class="text-center fw-bold fs-5">${s.total}</td>
           <td class="text-end"><input type="number" class="point-input" id="in-${s.id}" data-id="${s.id}" placeholder="+/-"></td>
         </tr>
       `).join('');
     }
 
+    // 手動清單批次更新 (累加模式)
     async function submitBatch() {
       const inputs = document.querySelectorAll('.point-input');
       const updates = [];
       inputs.forEach(i => { if(i.value && i.value != 0) updates.push({id: i.dataset.id, val: i.value}); });
-      if(updates.length === 0) return alert('未輸入任何數值');
+      if(updates.length === 0) return alert('請先輸入至少一位學生的加減分');
 
       const btn = document.getElementById('saveBtn');
-      btn.disabled = true; btn.innerText = '正在累加點數...';
+      btn.disabled = true; btn.innerText = '正在雲端累加點數...';
 
       const res = await fetch(`${GAS_URL}?action=batchUpdate&adminPwd=${currentPwd}&updates=${encodeURIComponent(JSON.stringify(updates))}`);
       const data = await res.json();
       alert(data.msg);
       if(data.success) {
-        // 更新成功後重新獲取資料，留在同一個畫面
         const refresh = await (await fetch(`${GAS_URL}?action=getAdminData&adminPwd=${currentPwd}`)).json();
         renderTable(refresh.data);
       }
-      btn.disabled = false; btn.innerText = '✅ 統一更新全班點數';
+      btn.disabled = false; btn.innerText = '🚀 統一更新全班點數 (執行累加)';
     }
 
-    async function importCSV() {
+    // CSV 大量匯入 (支援 累加/取代 兩種模式)
+    async function importData(mode) {
       const csv = document.getElementById('csvInput').value;
-      if(!csv) return alert('請輸入資料');
-      const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify({ adminPwd: currentPwd, csv: csv }) });
+      if(!csv) return alert('請輸入匯入內容');
+      const confirmMsg = mode === 'add' ? '確定要「累加」這些點數到現有分數中嗎？' : '確定要「覆蓋」目前的點數為全新數值嗎？';
+      if(!confirm(confirmMsg)) return;
+
+      const res = await fetch(GAS_URL, { 
+        method: 'POST', 
+        body: JSON.stringify({ adminPwd: currentPwd, csv: csv, mode: mode }) 
+      });
       const data = await res.json();
       alert(data.msg);
       if(data.success) {
@@ -125,7 +157,7 @@
 
     function showTab(tab) {
       ['edit', 'import', 'setting'].forEach(t => document.getElementById('tab-'+t).style.display = (t===tab?'block':'none'));
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.innerText.includes(tab==='edit'?'每週':tab==='import'?'大量':'密碼')));
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.toggle('active', l.innerText.includes(tab==='edit'?'手動':tab==='import'?'匯入':'密碼')));
     }
   </script>
 </body>
